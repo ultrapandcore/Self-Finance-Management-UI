@@ -2,12 +2,11 @@
 
 An ASP.NET Core Blazor UI (server side) for application of managing self finance.
 
-## Here are pages for:
+## Key Features:
 
-- CRUD for list of types for income and expenses
+- Daily report that accepts a date as input and displays the total income, total expenses, and a list of operations for that specific date.
+- Date period report that accepts a start date and end date as input and displays the total income, total expenses, and a list of operations for the specified period.
+- CRUD pages for managing types of income and expenses.
+- CRUD pages for managing financial operations, allowing users to add, retrieve, update, and delete transactions.
 
-- CRUD for financial operations
-
-- Daily report (input: date; result: total income for date, total expenses for date, list of operation for date)
-
-- Date period report (input: start date, end date; result: total income for period, total expenses for period, list of operation for period)
+![alt text](https://github.com/ultrapandcore/Self-Finance-Management-UI/blob/master/Screenshot.png?raw=true)
