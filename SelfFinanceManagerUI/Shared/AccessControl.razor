@@ -1,0 +1,10 @@
+﻿@inject IStringLocalizer<App> Localizer
+
+<AuthorizeView>
+    <Authorized>        
+        <a href="logout">@Localizer["Log out"]</a>
+    </Authorized>
+    <NotAuthorized>
+        <a href="login?redirectUri=/">@Localizer["Log in"]</a>
+    </NotAuthorized>
+</AuthorizeView>

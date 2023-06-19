@@ -1,0 +1,44 @@
+﻿@page
+@using Microsoft.Extensions.Localization;
+@using SelfFinanceManagerUI;
+@model SelfFinanceManagerUI.Pages.ErrorModel
+@inject IStringLocalizer<App> Localizer
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Error</title>
+    <link href="~/css/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/css/site.css" rel="stylesheet" asp-append-version="true" />
+</head>
+
+<body>
+    <div class="main">
+        <div class="content px-4">
+            <h1 class="text-danger">@Localizer["Error"].</h1>
+            <h2 class="text-danger">@Localizer["An error occurred while processing your request."]</h2>
+
+            @if (Model.ShowRequestId)
+            {
+                <p>
+                    <strong>@Localizer["Request ID"]:</strong> <code>@Model.RequestId</code>
+                </p>
+            }
+
+            <h3>@Localizer["Development Mode"]</h3>
+            <p>
+                @Localizer["Swapping to the Development environment displays detailed information about the error that occurred."]
+            </p>
+            <p>
+                @Localizer["The Development environment shouldn't be enabled for deployed applications."]
+                @Localizer["It can result in displaying sensitive information from exceptions to end users."]
+                @Localizer["For local debugging, enable the Development environment by setting the ASPNETCORE_ENVIRONMENT environment variable to Development and restarting the app."]
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

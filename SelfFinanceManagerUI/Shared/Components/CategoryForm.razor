@@ -1,0 +1,26 @@
+﻿@typeparam TModel where TModel : SaveCategoryDto
+@inject IServiceProvider ServiceProvider
+@inject IStringLocalizer<App> Localizer;
+
+<EditForm Model="@Model" OnValidSubmit="@OnValidSubmit">
+    <DataAnnotationsValidator />
+    <div class="input-group">
+        <input @bind="Model.Name" type="text" class="form-control" placeholder="@Placeholder" />
+        <div class="input-group-append">
+            <button type="submit" class="btn btn-primary">@(IsUpdateScenario ? @Localizer["Save"] : @Localizer["Create"])</button>
+            @if (IsUpdateScenario)
+            {
+                <button type="button" @onclick="OnCancel" class="btn btn-secondary">@Localizer["Cancel"]</button>
+            }
+        </div>
+    </div>
+    <ValidationSummary />
+</EditForm>
+
+@code {
+    [Parameter] public TModel Model { get; set; }
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public string Placeholder { get; set; }
+    [Parameter] public bool IsUpdateScenario { get; set; }
+}

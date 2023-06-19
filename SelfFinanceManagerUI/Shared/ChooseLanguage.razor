@@ -1,0 +1,50 @@
+﻿@inject NavigationManager NavigationManager
+@inject IConfiguration Configuration
+@inject IStringLocalizer<App> Localizer
+
+@if (cultures != null)
+{
+    <form class="d-flex align-items-center">
+        <select class="form-control me-2" @bind="selectedCulture">
+            <option value="">@Localizer["Select"]...</option>
+            @foreach (var culture in cultures)
+            {
+                <option value="@culture.Key">@culture.Value</option>
+            }
+        </select>
+        <button class="btn btn-outline-primary ms-2 me-2" @onclick="RequestCultureChange">@Localizer["Change"]</button>
+    </form>
+}
+
+@code {
+    private string selectedCulture = System.Threading.Thread.CurrentThread.CurrentCulture.Name;
+    private Dictionary<string, string> cultures;
+
+    protected override void OnInitialized()
+    {
+        cultures = Configuration.GetSection("Cultures")
+            .GetChildren().ToDictionary(x => x.Key, x => x.Value);
+    }
+
+    private void RequestCultureChange()
+    {
+        if (string.IsNullOrWhiteSpace(selectedCulture))
+        {
+            return;
+        }
+
+        var uri = new Uri(NavigationManager.Uri)
+            .GetComponents(UriComponents.Query | UriComponents.Path, UriFormat.Unescaped);
+
+        var query = $"?culture={Uri.EscapeDataString(selectedCulture)}&" +
+                    $"redirectUri={Uri.EscapeDataString(uri)}";
+
+        if (string.IsNullOrWhiteSpace(uri))
+        {
+            query = $"?culture={Uri.EscapeDataString(selectedCulture)}&" +
+                    "redirectUri=/";
+        }
+
+        NavigationManager.NavigateTo("Culture/SetCulture" + query, forceLoad: true);
+    }
+}

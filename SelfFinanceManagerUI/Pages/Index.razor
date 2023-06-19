@@ -1,0 +1,166 @@
+﻿@page "/"
+@inject AuthenticationStateProvider AuthState
+@inject IOperationService OperationService
+@inject ICategoryService CategoryService
+@inject ILogger<Index> Logger
+@inject IStringLocalizer<App> Localizer
+
+@attribute [Authorize]
+
+<PageTitle>Finance Manager</PageTitle>
+
+<h1>@Localizer["Welcome"], @Username!</h1>
+
+<EditForm Model="@DateRangeModel" OnValidSubmit="@LoadOperationsAsync">
+    <DataAnnotationsValidator />
+    <div class="row">
+        <div class="col-md-6">
+            <div class="date-input-wrapper">
+                <div class="row g-3">
+                    <div class="col">
+                        <label for="startDate" class="form-label date-input-label">@Localizer["Start Date"]:</label>
+                        <input type="date" id="startDate" class="form-control" @bind="DateRangeModel.StartDate">
+                    </div>
+                    <div class="col">
+                        <label for="endDate" class="form-label date-input-label">@Localizer["End Date (optional)"]:</label>
+                        <input type="date" id="endDate" class="form-control" @bind="DateRangeModel.EndDate">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col">
+                        <button type="submit" class="btn btn-primary">@Localizer["Submit"]</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <ValidationSummary />
+        </div>
+    </div>
+</EditForm>
+
+<div class="row justify-content-center mt-3">
+    <div>
+        <div class="mb-3">
+            <div class="operation-amount badge bg-success">
+                @Localizer["Income"]: @FormattingHelpers.FormatAmount(OperationsByDate.Income, true)
+            </div>
+            <div class="operation-amount badge bg-danger">
+                @Localizer["Expenses"]: @FormattingHelpers.FormatAmount(OperationsByDate.Expenses, false)
+            </div>
+        </div>
+    </div>
+    <div>
+        <h5>@Localizer["Operations"]:</h5>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-center mt-3">
+            <span>@Localizer["Loading data, please wait..."]</span>
+        </div>
+    }
+
+    <div class="mt-2">
+        @if (OperationsByDate.Operations.Any())
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var operation in OperationsByDate.Operations)
+                {
+                    <li class="list-group-item operation-list">
+                        <div class="category-name">@CategoryIdToName[@operation.CategoryId]</div>
+                        <div class="operation-name">@operation.Name</div>
+                        <div class="operation-amount">@FormattingHelpers.FormatAmount(operation.Amount, @operation.IsIncome)</div>
+                        <div class="operation-date">@operation.Date.ToString()</div>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <div class="text-muted">@Localizer["No operations found for this date."]</div>
+        }
+    </div>
+</div>
+
+@code {
+    private string Username = string.Empty;
+    private Dictionary<int, string> CategoryIdToName { get; set; } = new();
+    private DateRangeModel DateRangeModel { get; set; } = new();
+    private bool IsLoading { get; set; }
+    public OperationsByDate OperationsByDate { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthState.GetAuthenticationStateAsync();
+
+            if (authState?.User?.Identity is { IsAuthenticated: true })
+            {
+                Username = authState.User.Claims
+                            .Where(c => c.Type.Equals("name"))
+                            .Select(c => c.Value)
+                            .FirstOrDefault() ?? string.Empty;
+
+                await LoadOperationsAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred while initializing auth and loading data");
+        }
+    }
+
+    public async Task LoadOperationsAsync()
+    {
+        try
+        {
+            IsLoading = true;
+
+            DateTime endDate;
+            if (DateRangeModel.EndDate.HasValue)
+            {
+                endDate = DateRangeModel.EndDate.Value;
+            }
+            else
+            {
+                endDate = DateRangeModel.StartDate.Date;
+            }
+
+            OperationsByDate = await OperationService.GetOperationsByDateAsync(DateRangeModel.StartDate, endDate);
+            OperationsByDate.Operations = OperationsByDate.Operations.OrderBy(o => o.Date).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred while loading operations");
+        }
+        finally
+        {
+            IsLoading = false;
+            await LoadCategoriesAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            foreach (var operation in OperationsByDate.Operations)
+            {
+                var category = await CategoryService.GetCategoryByIdAsync(operation.CategoryId);
+                if (category != null)
+                {
+                    CategoryIdToName[operation.CategoryId] = category.Name;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred while loading categories");
+        }
+    }
+}

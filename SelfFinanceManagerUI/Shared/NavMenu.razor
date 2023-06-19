@@ -1,0 +1,41 @@
+﻿@inject IStringLocalizer<App> Localizer
+
+<div class="top-row ps-3 navbar navbar-dark navbar-custom">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Finance Manager</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-custom" href="" Match="NavLinkMatch.All">
+                <i class="fas fa-home"></i> @Localizer["Home"]
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-custom" href="/categories" Match="NavLinkMatch.All">
+                <i class="fas fa-list"></i> @Localizer["Categories"]
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link nav-link-custom" href="/operations" Match="NavLinkMatch.All">
+                <i class="fas fa-money-bill-wave-alt"></i> @Localizer["Operations"]
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

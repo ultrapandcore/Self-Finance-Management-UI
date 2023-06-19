@@ -1,0 +1,39 @@
+﻿@inject IStringLocalizer<App> Localizer
+@inject TokenProvider TokenProvider
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <Authorizing>
+                    <p>@Localizer["Determining session state, please wait..."]</p>
+                </Authorizing>
+                <NotAuthorized>
+                    <h1>@Localizer["Sorry"]</h1>
+                    <p>@Localizer["You're not authorized to reach this page. You need to log in."]</p>
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>@Localizer["Not found"]</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <p role="alert">@Localizer["Sorry, there's nothing at this address."]</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+@code
+{
+
+    [Parameter]
+    public string AccessToken { get; set; }
+
+    protected override void OnInitialized()
+    {
+        //Accept the parameter from _Host.cshtml and move into the Token Provider
+        TokenProvider.AccessToken = AccessToken;
+        base.OnInitialized();
+    }
+}

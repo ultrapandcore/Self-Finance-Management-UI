@@ -1,0 +1,198 @@
+﻿@page "/categories"
+@inject ICategoryService CategoryService
+@inject IStringLocalizer<App> Localizer;
+@inject ILogger<Categories> Logger;
+@attribute [Authorize]
+
+<h3 class="text-center mb-5">@Localizer["Categories"]</h3>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="input-group mb-3">
+            <label for="newCategoryName" class="input-group-text">@Localizer["New Category"]:</label>
+            <CategoryForm Model="NewCategory"
+                          Placeholder="@Localizer["Enter category name"]"
+                          OnValidSubmit="CreateCategory"
+                          IsUpdateScenario="false" />
+        </div>
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <div class="text-center mt-3">
+        <span>@Localizer["Loading data, please wait..."]</span>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        @if (CategoriesList != null)
+        {
+            @foreach (var category in CategoriesList)
+            {
+                <div class="card mb-3">
+                    <div class="card-body">
+                        @if (EditingCategoryId == category.Id)
+                        {
+                            <CategoryForm Model="EditingCategory"
+                              Placeholder="@Localizer["Enter new category name"]"
+                              OnValidSubmit="UpdateCategory"
+                              OnCancel="CancelEditing"
+                              IsUpdateScenario="true" />
+                        }
+                        else
+                        {
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="category-name" @onclick="() => ToggleOperations(category)">
+                                    @category.Name
+                                    <i class="@(category.IsExpanded ? "bi bi-chevron-up" : "bi bi-chevron-down")"></i>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button @onclick="() => StartEditingCategory(category)" class="btn btn-warning btn-custom-width me-2">@Localizer["Update"]</button>
+                                    <button @onclick="() => DeleteCategory(category.Id)" class="btn btn-danger btn-custom-width">@Localizer["Delete"]</button>
+                                </div>
+                            </div>
+                                @if (category.IsExpanded)
+                                {
+                                    <div class="mt-2">
+                                        @if (category.Operations.Any())
+                                        {
+                                            <ul class="list-group list-group-flush">
+                                                @foreach (var operation in category.Operations)
+                                                {
+                                                    <li class="list-group-item category-list">
+                                                        <div class="operation-name">@operation.Name</div>
+                                                        <div class="operation-amount">@FormattingHelpers.FormatAmount(operation.Amount, @operation.IsIncome)</div>
+                                                        <div class="operation-date">@operation.Date.ToString()</div>
+                                                    </li>
+                                                }
+                                            </ul>
+                                        }
+                                        else
+                                        {
+                                            <div class="text-muted">@Localizer["No operations found for this category."]</div>
+                                        }
+                                    </div>
+                                }
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private bool IsLoading { get; set; }
+
+    private bool IsEditing => EditingCategoryId != 0;
+    private SaveCategoryDto NewCategory { get; set; } = new();
+    private SaveCategoryDto EditingCategory { get; set; } = new();
+    public List<Category> CategoriesList { get; set; } = new();
+    public int EditingCategoryId { get; set; } = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred while loading categories");
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            IsLoading = true;
+
+            CategoriesList = (await CategoryService.GetCategoriesAsync()).ToList();
+
+            foreach (var category in CategoriesList)
+            {
+                category.Operations = (await CategoryService.GetOperationsByCategoryIdAsync(category.Id)).ToList();
+                category.Operations = category.Operations.OrderBy(o => o.Date).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred while loading categories and operations");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task CreateCategory()
+    {
+        try
+        {
+            var createdCategory = await CategoryService.CreateCategoryAsync(NewCategory);
+            CategoriesList.Add(createdCategory);
+            NewCategory = new SaveCategoryDto();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred while creating a new category");
+        }
+    }
+
+    private void StartEditingCategory(Category category)
+    {
+        EditingCategoryId = category.Id;
+        EditingCategory = new SaveCategoryDto { Name = category.Name };
+    }
+
+    private void CancelEditing()
+    {
+        EditingCategoryId = 0;
+        EditingCategory = new SaveCategoryDto();
+    }
+
+    private async Task UpdateCategory()
+    {
+        try
+        {
+            var updatedCategory = await CategoryService.UpdateCategoryAsync(EditingCategoryId, EditingCategory);
+            var index = CategoriesList.FindIndex(c => c.Id == EditingCategoryId);
+            if (index >= 0)
+            {
+                CategoriesList[index].Name = updatedCategory.Name;
+                updatedCategory.Operations = CategoriesList[index].Operations;
+                CategoriesList[index] = updatedCategory;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error occurred while updating category with ID {EditingCategoryId}");
+        }
+        finally
+        {
+            EditingCategoryId = 0;
+            EditingCategory = new SaveCategoryDto();
+        }
+    }
+
+    private async Task DeleteCategory(int id)
+    {
+        try
+        {
+            await CategoryService.DeleteCategoryAsync(id);
+            CategoriesList.RemoveAll(c => c.Id == id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error occurred while deleting category with ID {id}");
+        }
+    }
+
+    private void ToggleOperations(Category category)
+    {
+        category.IsExpanded = !category.IsExpanded;
+    }
+}

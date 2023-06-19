@@ -1,0 +1,52 @@
+﻿@typeparam TModel where TModel : SaveOperationDto
+@using System.ComponentModel.DataAnnotations
+@using SelfFinanceManagerUI.Data.Models;
+@inject IServiceProvider ServiceProvider
+@inject IStringLocalizer<App> Localizer
+
+<EditForm Model="@Model" OnValidSubmit="@OnValidSubmit">
+    <DataAnnotationsValidator />
+    <div class="input-group">
+        <select @bind="Model.CategoryId" class="form-select col-md-3">
+            <option value="">@Localizer["Select Category"]</option>
+            @foreach (var category in Categories)
+            {
+                <option value="@category.Id">@category.Name</option>
+            }
+        </select>
+        <input @bind="Model.Name" type="text" class="form-control col-md-4" placeholder="@Localizer["Enter name"]" />
+        <input @attributes="@AmountAttributes" @bind="Model.Amount" type="number" class="form-control" placeholder="@Localizer["Enter amount"]" />
+        <select @onchange="UpdateIsIncome" class="form-select" value="@(Model.IsIncome ? "true" : "false")">
+            <option value="true">@Localizer["Income"]</option>
+            <option value="false">@Localizer["Expense"]</option>
+        </select>
+        <input @bind="Model.Date" type="date" class="form-control" />
+        <div class="input-group-append">
+            <button type="submit" class="btn btn-primary">@(IsUpdateScenario ? @Localizer["Save"] : @Localizer["Create"])</button>
+            @if (IsUpdateScenario)
+            {
+                <button type="button" @onclick="OnCancel" class="btn btn-secondary">@Localizer["Cancel"]</button>
+            }
+        </div>
+    </div>
+    <ValidationSummary />
+</EditForm>
+@code {
+    [Parameter] public TModel Model { get; set; }
+    [Parameter] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public List<Category> Categories { get; set; } = new();
+    [Parameter] public bool IsUpdateScenario { get; set; }
+
+    private Dictionary<string, object> AmountAttributes { get; } = new()
+    {
+        { "type", "number" },
+        { "step", "0.01" },
+        { "min", "0.01" }
+    };
+
+    private void UpdateIsIncome(ChangeEventArgs e)
+    {
+        Model.IsIncome = bool.TryParse(e.Value.ToString(), out bool isIncome) && isIncome;
+    }
+}

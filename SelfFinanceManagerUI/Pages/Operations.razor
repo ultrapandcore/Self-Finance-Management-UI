@@ -1,0 +1,200 @@
+﻿@page "/operations"
+@inject ICategoryService CategoryService
+@inject IOperationService OperationService
+@inject IStringLocalizer<App> Localizer
+@inject ILogger<Operations> Logger
+@attribute [Authorize]
+
+<h3 class="text-center mb-5">@Localizer["Operations"]</h3>
+
+<div class="row justify-content-center">
+    <div class="col-md-11">
+        <div class="input-group mb-3">
+            <label for="newOperation" class="input-group-text">@Localizer["New Operation"]:</label>
+            <OperationForm Model="@NewOperation"
+                           OnValidSubmit="CreateOperation"
+                           Categories="@Categories" />
+        </div>
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <div class="text-center mt-3">
+        <span>@Localizer["Loading data, please wait..."]</span>
+    </div>
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        @if (OperationsList != null)
+        {
+            @foreach (var operation in OperationsList)
+            {
+                <div class="card mb-3">
+                    <div class="card-body">
+                        @if (IsEditing && EditingOperationId == operation.Id)
+                        {
+                            <div class="d-flex justify-content-between">
+                                <OperationForm Model="@EditingOperation"
+                                   OnValidSubmit="UpdateOperation"
+                                   OnCancel="CancelEditingOperation"
+                                   Categories="@Categories"
+                                   IsUpdateScenario="true" />
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="d-flex justify-content-between operation-list">
+                                <div class="col-md-2 category-name">
+                                    @CategoryIdToName[operation.CategoryId]
+                                </div>
+                                <div class="col-md-3 operation-name">
+                                    @operation.Name
+                                </div>
+                                <div class="col-md-2 operation-amount">
+                                    @FormattingHelpers.FormatAmount(operation.Amount, @operation.IsIncome)
+                                </div>
+                                <div class="col-md-2 operation-date">
+                                    @operation.Date.ToString()
+                                </div>
+                                <div class="col-md-auto d-flex justify-content-between">
+                                    <button @onclick="() => StartEditingOperation(operation)" class="btn btn-warning me-2 btn-custom-width">@Localizer["Update"]</button>
+                                    <button @onclick="() => DeleteOperation(operation.Id)" class="btn btn-danger btn-custom-width">@Localizer["Delete"]</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private List<Category> Categories { get; set; } = new();
+    private Dictionary<int, string> CategoryIdToName { get; set; } = new();
+    private SaveOperationDto NewOperation { get; set; } = new();
+    private SaveOperationDto EditingOperation { get; set; } = new();
+    private int EditingOperationId { get; set; } = 0;
+    public List<FinancialOperation> OperationsList { get; set; } = new();
+    public bool IsLoading { get; set; }
+    public bool IsEditing { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+        await LoadOperationsAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        IsLoading = true;
+        Categories = (await CategoryService.GetCategoriesAsync()).ToList();
+        IsLoading = false;
+    }
+
+    private async Task LoadOperationsAsync()
+    {
+        IsLoading = true;
+        OperationsList = (await OperationService.GetFinancialOperationsAsync()).ToList();
+        SortOperationsByDate();
+
+        foreach (var operation in OperationsList)
+        {
+            var category = await CategoryService.GetCategoryByIdAsync(operation.CategoryId);
+            CategoryIdToName[operation.CategoryId] = category.Name;
+        }
+
+        IsLoading = false;
+    }
+
+    private async Task CreateOperation()
+    {
+        try
+        {
+            IsEditing = false;
+
+            var createdOperation = await OperationService.CreateOperationAsync(NewOperation);
+            OperationsList.Add(createdOperation);
+            SortOperationsByDate();
+            NewOperation = new SaveOperationDto();
+
+            if (!CategoryIdToName.ContainsKey(createdOperation.CategoryId))
+            {
+                var category = await CategoryService.GetCategoryByIdAsync(createdOperation.CategoryId);
+                CategoryIdToName[createdOperation.CategoryId] = category.Name;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error occurred while creating a new operation");
+        }
+    }
+
+    private void StartEditingOperation(FinancialOperation operation)
+    {
+        IsEditing = true;
+
+        EditingOperationId = operation.Id;
+        EditingOperation = new SaveOperationDto
+        {
+            CategoryId = operation.CategoryId,
+            Name = operation.Name,
+            Amount = operation.Amount,
+            IsIncome = operation.IsIncome,
+            Date = operation.Date
+        };
+    }
+
+    private void CancelEditingOperation()
+    {
+        EditingOperationId = 0;
+        IsEditing = false;
+        EditingOperation = new SaveOperationDto();
+    }
+
+    private async Task UpdateOperation()
+    {
+        try
+        {
+            var updatedOperation = await OperationService.UpdateOperationAsync(EditingOperationId, EditingOperation);
+            var index = OperationsList.FindIndex(o => o.Id == EditingOperationId);
+            if (index >= 0)
+            {
+                OperationsList[index] = updatedOperation;
+            }
+            SortOperationsByDate();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error occurred while updating operation with ID {EditingOperationId}");
+        }
+        finally
+        {
+            EditingOperationId = 0;
+            EditingOperation = new SaveOperationDto();
+        }
+    }
+
+    private async Task DeleteOperation(int id)
+    {
+        try
+        {
+            await OperationService.DeleteOperationAsync(id);
+            OperationsList.RemoveAll(o => o.Id == id);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, $"Error occurred while deleting operation with ID {id}");
+        }
+    }
+
+    private void SortOperationsByDate()
+    {
+        if (OperationsList != null)
+        {
+            OperationsList = OperationsList.Where(o => o != null).OrderBy(o => o.Date).ToList();
+        }
+    }
+}
